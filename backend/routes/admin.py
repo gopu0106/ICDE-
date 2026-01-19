@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import db, User, Transaction
 from utils.utils import require_auth, require_role
 from sqlalchemy import func
+from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -35,12 +36,32 @@ def get_reports():
     ).filter(Transaction.transaction_type == 'top-up').group_by(Transaction.source).all()
     source_report = {s: c for s, c in sources}
 
+    # Daily Growth Trend (Last 7 Days)
+    from datetime import timedelta
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    
+    growth_data = db.session.query(
+        func.date(Transaction.timestamp), func.abs(func.sum(Transaction.amount))
+    ).filter(Transaction.timestamp >= seven_days_ago)\
+     .group_by(func.date(Transaction.timestamp))\
+     .order_by(func.date(Transaction.timestamp)).all()
+    
+    growth_trend = [{"date": d, "volume": v} for d, v in growth_data]
+    
+    # Entity Distribution
+    roles_data = db.session.query(
+        User.role, func.count(User.id)
+    ).group_by(User.role).all()
+    entity_distribution = {role: count for role, count in roles_data}
+
     return jsonify({
         'total_transactions': total_tx,
         'total_volume': total_volume,
         'waste_reduction_pct': waste_reduction,
         'venue_report': venue_report,
         'source_report': source_report,
+        'growth_trend': growth_trend,
+        'entity_distribution': entity_distribution,
         'active_users': total_students
     }), 200
 

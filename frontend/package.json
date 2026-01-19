@@ -10,6 +10,7 @@
     "autoprefixer": "^10.4.16",
     "axios": "^1.13.2",
     "dayjs": "^1.11.19",
+    "framer-motion": "^12.27.1",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.562.0",
     "postcss": "^8.4.31",
