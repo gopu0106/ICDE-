@@ -3,12 +3,14 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from '../components/BottomNav';
 import { Shield, Share2, LogOut, ChevronRight, User as UserIcon, QrCode } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const [qrBase64, setQrBase64] = useState('');
   const [shareLink, setShareLink] = useState('');
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const fetchQR = async () => {
@@ -27,8 +29,10 @@ const Profile = () => {
     try {
       const res = await api.get('/wallet/share');
       setShareLink(res.data.share_url);
+      navigator.clipboard.writeText(res.data.share_url);
+      showToast('Proxy link copied to clipboard', 'success');
     } catch (err) {
-      alert('Link generation sequence failed.');
+      showToast('Link generation sequence failed.', 'error');
     } finally {
       setLoading(false);
     }

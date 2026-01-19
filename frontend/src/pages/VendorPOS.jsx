@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import QRScanner from '../components/QRScanner';
-import { LogOut, MapPin, Coffee, Utensils, Moon, Candy, Camera, CheckCircle, XCircle } from 'lucide-react';
+import { LogOut, MapPin, Coffee, Utensils, Moon, Candy, Camera, CheckCircle, XCircle, Zap, Database, CheckCircle2, ShoppingBag, History } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const VendorPOS = () => {
   const [scanning, setScanning] = useState(false);
   const [venue, setVenue] = useState('Mess 1');
   const [mealType, setMealType] = useState('Lunch');
   const [mealCost, setMealCost] = useState(70);
-  const [status, setStatus] = useState(null); 
+  const [success, setSuccess] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ count: 0, total: 0 });
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const mealPresets = [
     { name: 'Breakfast', cost: 30, icon: <Coffee size={24} /> },
@@ -22,7 +25,7 @@ const VendorPOS = () => {
   const handleMealSelect = (m) => {
     setMealType(m.name);
     setMealCost(m.cost);
-    setStatus(null);
+    setSuccess(false); // Clear status when meal type changes
   };
 
   const onScanSuccess = async (decodedText) => {
@@ -32,12 +35,18 @@ const VendorPOS = () => {
       const res = await api.post('/meal/deduct', {
         qr_payload: qrPayload,
         meal_cost: mealCost,
-        description: mealType,
+        description: `Meal: ${mealType}`,
         venue: venue
       });
-      setStatus({ type: 'success', msg: `Payment of ₹${mealCost.toLocaleString()} successful.`, id: res.data.user_id });
+      setSuccess(true);
+      setSessionStats(prev => ({
+        count: prev.count + 1,
+        total: prev.total + mealCost
+      }));
+      showToast(`${mealType} authorized for student`, 'success');
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setStatus({ type: 'error', msg: err.response?.data?.message || 'Transaction failed.' });
+      showToast(err.response?.data?.message || 'Transaction Void', 'error');
     }
   };
 
@@ -55,9 +64,9 @@ const VendorPOS = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-6">
-          <select 
+          <select
             className="bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold transition-all focus:border-primary outline-none cursor-pointer"
             value={venue}
             onChange={(e) => setVenue(e.target.value)}
@@ -75,14 +84,14 @@ const VendorPOS = () => {
 
       {/* Main Split Layout */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-10">
-        
+
         {/* Left: Configuration (2/5) */}
         <div className="lg:col-span-2 space-y-8">
           <div className="glass-premium p-8">
             <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-8">Meal Selection</h3>
             <div className="grid grid-cols-2 gap-4">
               {mealPresets.map(m => (
-                <button 
+                <button
                   key={m.name}
                   onClick={() => handleMealSelect(m)}
                   className={`p-8 rounded-3xl border-2 transition-all flex flex-col items-center justify-center space-y-3 ${mealType === m.name ? 'border-primary bg-primary/10 text-primary shadow-xl shadow-primary/10' : 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-400'}`}
@@ -101,7 +110,7 @@ const VendorPOS = () => {
             <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-6">Price Adjustment</h3>
             <div className="relative">
               <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-light text-slate-500 tracking-tighter">₹</span>
-              <input 
+              <input
                 type="number"
                 className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 pl-12 text-4xl font-black tracking-tighter outline-none focus:border-primary transition-all"
                 value={mealCost}
@@ -115,13 +124,33 @@ const VendorPOS = () => {
         <div className="lg:col-span-3 space-y-8">
           {!scanning ? (
             <div className="glass-premium h-full flex flex-col items-center justify-center min-h-[400px] border-dashed border-white/10 bg-gradient-to-br from-white/5 to-transparent relative group">
+              {/* Session Intelligence - Best Version Enhancement */}
+              <div className="grid grid-cols-2 gap-4 mb-8 w-full max-w-sm">
+                <div className="glass-premium p-6 border-white/5 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl"></div>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <History size={14} className="text-primary" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Served Today</span>
+                  </div>
+                  <div className="text-3xl font-black text-white">{sessionStats.count}</div>
+                </div>
+                <div className="glass-premium p-6 border-white/5 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full blur-xl"></div>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <ShoppingBag size={14} className="text-blue-400" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Credit</span>
+                  </div>
+                  <div className="text-3xl font-black text-white">₹{sessionStats.total.toLocaleString()}</div>
+                </div>
+              </div>
+
               <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center mb-8 relative">
                 <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping opacity-25"></div>
                 <div className="relative z-10 text-primary drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">
                   <Camera size={56} strokeWidth={1.5} />
                 </div>
               </div>
-              
+
               <h2 className="text-3xl font-black tracking-tighter mb-4 text-center">Ready to Accept Payment</h2>
               <p className="text-slate-500 text-sm mb-12 text-center max-w-xs">Ask the student to present the QR code from their Campus Wallet profile.</p>
               

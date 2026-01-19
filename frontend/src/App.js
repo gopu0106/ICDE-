@@ -69,12 +69,16 @@ const AppRoutes = () => {
   );
 };
 
+import { ToastProvider } from './context/ToastContext';
+
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ToastProvider>
     </Router>
   );
 }

@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { UserPlus, Mail, Lock, ShieldCheck, ArrowRight } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Register = () => {
   const [form, setForm] = useState({ email: '', password: '', role: 'student' });
-  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await api.post('/auth/register', form);
+      showToast('Account Initialized Successfully', 'success');
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      showToast(err.response?.data?.message || 'Registration failed', 'error');
     }
   };
 
@@ -83,7 +83,6 @@ const Register = () => {
             </div>
           </div>
 
-          {error && <p className="text-red-400 text-xs font-bold text-center bg-red-500/10 p-4 rounded-xl border border-red-500/20">{error}</p>}
 
           <button type="submit" className="w-full btn-premium-secondary py-5 text-sm font-black uppercase tracking-[0.2em] mt-4">
             Activate Account

@@ -1,24 +1,28 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
-import { ArrowLeft, CheckCircle2, CreditCard, UserCheck, ShieldCheck } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { useLocation } from 'react-router-dom';
 
 const TopUpWallet = () => {
-  const [amount, setAmount] = useState('');
+  const location = useLocation();
+  const [amount, setAmount] = useState(location.state?.preset?.toString() || '');
   const [source, setSource] = useState('self');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleTopUp = async () => {
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0) {
+      showToast('Enter valid capital amount', 'error');
+      return;
+    }
     setLoading(true);
     try {
       await api.post('/wallet/topup', { amount: parseFloat(amount), source });
       setSuccess(true);
+      showToast(`₹${parseFloat(amount).toLocaleString()} liquidity secured successfully`, 'success');
       setTimeout(() => navigate('/student/dashboard'), 2500);
     } catch (err) {
-      alert('Transaction rejected by bank gateway.');
+      showToast('Transaction rejected by bank gateway.', 'error');
     } finally {
       setLoading(false);
     }

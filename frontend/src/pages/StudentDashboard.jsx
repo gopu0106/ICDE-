@@ -9,9 +9,18 @@ const StudentDashboard = () => {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mealSlot, setMealSlot] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
+    const detectMealSlot = () => {
+      const hour = new Date().getHours();
+      if (hour >= 7 && hour < 11) setMealSlot('BREAKFAST');
+      else if (hour >= 11 && hour < 15) setMealSlot('LUNCH');
+      else if (hour >= 18 && hour < 22) setMealSlot('DINNER');
+      else setMealSlot('N/A');
+    };
+
     const fetchBalance = async () => {
       try {
         const balRes = await api.get(`/wallet/balance?t=${Date.now()}`);
@@ -23,7 +32,6 @@ const StudentDashboard = () => {
 
     const fetchTransactions = async () => {
       try {
-        // Calling /transactions without the trailing slash matches the new backend route
         const txRes = await api.get(`/transactions?t=${Date.now()}`);
         setTransactions(txRes.data.slice(0, 5));
       } catch (err) {
@@ -33,6 +41,7 @@ const StudentDashboard = () => {
 
     const fetchData = async () => {
       setLoading(true);
+      detectMealSlot();
       await Promise.all([fetchBalance(), fetchTransactions()]);
       setLoading(false);
     };
@@ -56,18 +65,44 @@ const StudentDashboard = () => {
       <div className="glass-premium mesh-gradient-balance p-8 mb-8 relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full -translate-y-24 translate-x-24 blur-[80px]"></div>
         <div className="relative z-10">
-          <div className="flex items-center space-x-2 mb-1">
-            <Wallet size={14} className="text-primary" />
-            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-tighter">Current Balance</h3>
+          <div className="flex justify-between items-start mb-1">
+            <div className="flex items-center space-x-2">
+              <Wallet size={14} className="text-primary" />
+              <h3 className="text-slate-400 text-xs font-bold uppercase tracking-tighter">Current Balance</h3>
+            </div>
+            {balance < 100 && (
+              <div className="bg-red-500/20 text-red-500 text-[8px] font-black px-2 py-1 rounded-md border border-red-500/30 animate-pulse tracking-widest">
+                LOW FUNDS
+              </div>
+            )}
           </div>
           <div className="text-5xl font-black text-white tracking-tighter mb-6">
             <span className="text-2xl font-light opacity-50 mr-1">₹</span>
             {balance.toLocaleString()}
           </div>
-          <div className="flex items-center text-[10px] font-bold text-primary bg-emerald-500/10 w-fit px-3 py-1 rounded-full border border-primary/20">
-            ● SYSTEM SECURED
+          <div className="flex items-center justify-between">
+            <div className="flex items-center text-[10px] font-bold text-primary bg-emerald-500/10 w-fit px-3 py-1 rounded-full border border-primary/20">
+              ● SYSTEM SECURED
+            </div>
+            <div className="text-[10px] font-black text-slate-500 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+              SLOT: <span className="text-white">{mealSlot}</span>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Quick Top-up Logic Inject - Best Version Enhancement */}
+      <div className="flex space-x-3 mb-8">
+        {[100, 500].map(amt => (
+          <button 
+            key={amt}
+            onClick={() => navigate('/student/topup', { state: { preset: amt } })}
+            className="flex-1 glass-premium py-2 border-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/10 hover:text-primary transition-all flex items-center justify-center space-x-2"
+          >
+            <Plus size={12} />
+            <span>Top Up ₹{amt}</span>
+          </button>
+        ))}
       </div>
 
       {/* Bento Grid Actions */}

@@ -2,23 +2,29 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, LogIn, ShieldAlert } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { Mail, Lock, LogIn, ShieldCheck, Zap } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
       login(res.data.user, res.data.token);
+      showToast('Authentication Successful', 'success');
       navigate(res.data.redirect);
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed');
+      showToast(err.response?.data?.message || 'Login failed', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 

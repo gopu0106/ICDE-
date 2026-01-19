@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { TrendingUp, Users, Activity, Leaf, LogOut, ChevronRight } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Sector, Label } from 'recharts';
+import { Download, Users, Activity, Leaf, LogOut, ChevronRight, IndianRupee, TrendingUp } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const AdminDashboard = () => {
   const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -18,6 +20,41 @@ const AdminDashboard = () => {
         console.error(err);
       } finally {
         setLoading(false);
+      }
+    };
+
+    const handleExportData = async () => {
+      try {
+        showToast('Preparing audit report...', 'info');
+        const res = await api.get('/transactions');
+        const data = res.data;
+
+        const headers = ['ID', 'User ID', 'Amount', 'Type', 'Description', 'Venue', 'Timestamp'];
+        const csvContent = [
+          headers.join(','),
+          ...data.map(t => [
+            t.id,
+            t.user_id,
+            t.amount,
+            t.transaction_type,
+            `"${t.description}"`,
+            `"${t.venue || ''}"`,
+            t.timestamp
+          ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `campuseats_audit_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('Audit report downloaded', 'success');
+      } catch (err) {
+        showToast('Export failed', 'error');
       }
     };
     fetchReports();
@@ -36,24 +73,28 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 lg:p-12 font-inter max-w-[1600px] mx-auto">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 space-y-6 md:space-y-0 text-white">
+      <header className="flex justify-between items-center mb-12">
         <div>
-          <div className="flex items-center space-x-2 text-primary font-black tracking-[0.3em] uppercase text-xs mb-2">
-            <Activity size={14} />
-            <span>Infrastructure Core</span>
-          </div>
-          <h1 className="text-4xl font-black tracking-tighter">System Analytics</h1>
+          <h1 className="text-4xl font-black tracking-tighter text-white mb-2">Intel Core</h1>
+          <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">System Analytics & Oversight</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <button 
-            onClick={() => navigate('/admin/users')} 
-            className="btn-premium-secondary flex items-center space-x-2 py-3 px-6 text-sm"
+        <div className="flex space-x-4">
+          <button
+            onClick={handleExportData}
+            className="glass-premium px-6 py-3 border-white/5 flex items-center space-x-3 text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all"
           >
-            <Users size={18} />
-            <span>Personnel Mgmt</span>
+            <Download size={16} className="text-primary" />
+            <span>Export Audit</span>
           </button>
-          <button 
-            onClick={() => navigate('/login')} 
+          <button
+            onClick={() => navigate('/admin/users')}
+            className="btn-premium-primary px-6 py-3 text-xs flex items-center space-x-3"
+          >
+            <Users size={16} />
+            <span>User Directory</span>
+          </button>
+          <button
+            onClick={() => navigate('/login')}
             className="glass-premium p-3 border-white/5 hover:bg-white/10 transition-all text-slate-400"
           >
             <LogOut size={20} />
