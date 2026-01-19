@@ -155,7 +155,7 @@ const VendorPOS = () => {
               <p className="text-slate-500 text-sm mb-12 text-center max-w-xs">Ask the student to present the QR code from their Campus Wallet profile.</p>
               
               <button 
-                onClick={() => { setStatus(null); setScanning(true); }}
+                onClick={() => setScanning(true)}
                 className="btn-premium-primary w-full max-w-sm"
               >
                 Launch QR Scanner
@@ -176,23 +176,6 @@ const VendorPOS = () => {
             </div>
           )}
 
-          {/* Transaction Status Overlay/Banner */}
-          {status && (
-            <div className={`p-8 rounded-3xl border-2 flex items-center justify-between animate-in slide-in-from-bottom duration-500 ${status.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
-              <div className="flex items-center space-x-6">
-                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center ${status.type === 'success' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
-                  {status.type === 'success' ? <CheckCircle size={32} /> : <XCircle size={32} />}
-                </div>
-                <div>
-                  <h4 className={`text-xl font-black tracking-tighter ${status.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {status.type === 'success' ? 'Verified & Paid' : 'Payment Rejected'}
-                  </h4>
-                  <p className="text-sm text-slate-400 font-medium">{status.msg} {status.id && `ID: #${status.id}`}</p>
-                </div>
-              </div>
-              <button onClick={() => setStatus(null)} className="text-slate-500 hover:text-white transition-colors">✕</button>
-            </div>
-          )}
         </div>
       </div>
     </div>

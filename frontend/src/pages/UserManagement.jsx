@@ -110,9 +110,9 @@ const UserManagement = () => {
                     <div className="text-[10px] text-slate-600 font-bold uppercase mt-0.5">Verified Liquidity</div>
                   </td>
                   <td className="px-8 py-7 text-right">
-                    {u.role === 'student' && (
+                    {user.role === 'student' && (
                       <button 
-                        onClick={() => setSelectedUser(u)}
+                        onClick={() => setSelectedUser(user)}
                         className="btn-premium-secondary py-2 px-5 text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white"
                       >
                         Initiate Refund
