@@ -1,0 +1,9 @@
+flask
+flask-cors
+flask-sqlalchemy
+pyjwt
+bcrypt
+qrcode
+pillow
+python-dotenv
+pytest
