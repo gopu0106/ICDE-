@@ -31,6 +31,7 @@ class Transaction(db.Model):
     description = db.Column(db.String(200))
     venue = db.Column(db.String(100))
     source = db.Column(db.String(20)) # self, parent, admin
+    status = db.Column(db.String(20), default='success') # success, pending, processing
     skipped = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -43,6 +44,7 @@ class Transaction(db.Model):
             'description': self.description,
             'venue': self.venue,
             'source': self.source,
+            'status': self.status,
             'skipped': self.skipped,
             'timestamp': self.timestamp.isoformat()
         }

@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from models import db, User, Transaction
 from utils.utils import require_auth
+from sqlalchemy import desc
+from datetime import datetime
 
 wallet_bp = Blueprint('wallet', __name__)
 
@@ -49,4 +51,49 @@ def share_link():
     return jsonify({
         'share_url': f"http://localhost:3000/parent/topup/{share_token}",
         'message': 'Share this link with your parent for remote top-up'
+    }), 200
+
+@wallet_bp.route('/projection', methods=['GET'])
+@require_auth
+def get_projection():
+    user_id = request.user['user_id']
+    user = User.query.get(user_id)
+    
+    # Determine next meal slot and cost
+    now = datetime.now()
+    hour = now.hour
+    
+    next_meal_cost = 70 # Default to Lunch
+    if 0 <= hour < 10:
+        next_meal_cost = 30 # Breakfast
+    elif 10 <= hour < 15:
+        next_meal_cost = 70 # Lunch
+    elif 15 <= hour < 21:
+        next_meal_cost = 60 # Dinner
+    else:
+        next_meal_cost = 30 # Late night -> next Breakfast
+        
+    # Calculate suggestion amount based on last 5 deductions
+    last_transactions = Transaction.query.filter_by(user_id=user_id, transaction_type='deduction')\
+                        .order_by(desc(Transaction.timestamp)).limit(5).all()
+    
+    # Account for pending parental top-ups
+    pending_topups = Transaction.query.filter_by(user_id=user_id, status='processing', transaction_type='top-up').all()
+    pending_amount = sum([t.amount for t in pending_topups])
+
+    suggestion_amount = 0
+    if last_transactions:
+        avg_cost = sum([t.amount for t in last_transactions]) / len(last_transactions)
+        # Round to nearest 50
+        suggestion_amount = max(100, round(avg_cost / 50) * 50)
+    else:
+        suggestion_amount = 200 # Baseline suggestion
+        
+    confidence_score = min(0.95, 0.5 + (len(last_transactions) * 0.1))
+    
+    return jsonify({
+        "projected_balance": (user.balance + pending_amount) - next_meal_cost,
+        "next_meal_cost": float(next_meal_cost),
+        "suggestion_amount": float(suggestion_amount),
+        "confidence_score": float(confidence_score)
     }), 200

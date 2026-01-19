@@ -3,14 +3,52 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import BottomNav from '../components/BottomNav';
 import dayjs from 'dayjs';
-import { Plus, CreditCard, ArrowRight, Wallet, User } from 'lucide-react';
+import { Plus, CreditCard, ArrowRight, Wallet, User, TrendingUp, TrendingDown, Zap } from 'lucide-react';
+
+const AnimatedNumber = ({ value }) => {
+  const [displayValue, setDisplayValue] = useState(value);
+
+  useEffect(() => {
+    let start = displayValue;
+    let end = value;
+    if (start === end) return;
+
+    let startTime = null;
+    const duration = 500; // 0.5s
+
+    const animate = (currentTime) => {
+      if (!startTime) startTime = currentTime;
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const current = Math.floor(progress * (end - start) + start);
+      setDisplayValue(current);
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [value]);
+
+  return <span>{displayValue.toLocaleString()}</span>;
+};
 
 const StudentDashboard = () => {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mealSlot, setMealSlot] = useState('');
+  const [projection, setProjection] = useState(null);
+  const [showSmartTopUp, setShowSmartTopUp] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (projection) {
+      setIsPulsing(true);
+      const timer = setTimeout(() => setIsPulsing(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [projection]);
 
   useEffect(() => {
     const detectMealSlot = () => {
@@ -33,16 +71,38 @@ const StudentDashboard = () => {
     const fetchTransactions = async () => {
       try {
         const txRes = await api.get(`/transactions?t=${Date.now()}`);
-        setTransactions(txRes.data.slice(0, 5));
+        const latestTx = txRes.data.slice(0, 5);
+        setTransactions(latestTx);
+        return txRes.data;
       } catch (err) {
         console.error('Transactions fetch failed:', err);
+        return [];
+      }
+    };
+
+    const fetchProjection = async (txHistory) => {
+      try {
+        const projRes = await api.get('/wallet/projection');
+        const projData = projRes.data;
+        setProjection(projData);
+
+        // Smart Top-Up Logic
+        const now = new Date();
+        const hour = now.getHours();
+        const isNearEnd = (hour === 10 || hour === 14 || hour === 21);
+        const last24hCount = txHistory.filter(t => dayjs().diff(dayjs(t.timestamp), 'hour') <= 24).length;
+        
+        setShowSmartTopUp(projData.projected_balance < 50 && isNearEnd && last24hCount >= 3);
+      } catch (err) {
+        console.error('Projection fetch failed:', err);
       }
     };
 
     const fetchData = async () => {
       setLoading(true);
       detectMealSlot();
-      await Promise.all([fetchBalance(), fetchTransactions()]);
+      const [_, txHistory] = await Promise.all([fetchBalance(), fetchTransactions()]);
+      await fetchProjection(txHistory || []);
       setLoading(false);
     };
 
@@ -76,9 +136,9 @@ const StudentDashboard = () => {
               </div>
             )}
           </div>
-          <div className="text-5xl font-black text-white tracking-tighter mb-6">
+          <div className={`text-5xl font-black text-white tracking-tighter mb-6 flex items-baseline transition-colors duration-500 ${isPulsing ? 'animate-pulse text-primary' : ''}`}>
             <span className="text-2xl font-light opacity-50 mr-1">₹</span>
-            {balance.toLocaleString()}
+            <AnimatedNumber value={balance} />
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center text-[10px] font-bold text-primary bg-emerald-500/10 w-fit px-3 py-1 rounded-full border border-primary/20">
@@ -90,6 +150,43 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Projection Intelligence Panel */}
+      {projection && (
+        <div className="w-[85%] mx-auto -mt-6 mb-10 glass-premium p-4 backdrop-blur-md border-white/5 flex items-center justify-between relative overflow-hidden group shadow-2xl shadow-black/20">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-shimmer"></div>
+          <div className="flex items-center space-x-3 relative z-10">
+            {projection.projected_balance >= balance ? (
+              <TrendingUp size={16} className="text-emerald-500" />
+            ) : (
+              <TrendingDown size={16} className="text-amber-500" />
+            )}
+            <div>
+              <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Projected After {mealSlot !== 'N/A' ? mealSlot : 'Meal'}</p>
+              <p className={`text-sm font-black tracking-tighter ${
+                projection.projected_balance >= 200 ? 'text-emerald-500' : 
+                projection.projected_balance >= 100 ? 'text-amber-500' : 'text-red-500'
+              }`}>
+                ₹{projection.projected_balance.toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <div className="text-[8px] font-black text-slate-500 bg-white/5 px-2 py-1 rounded border border-white/5 uppercase">
+            Acc: {Math.round(projection.confidence_score * 100)}%
+          </div>
+        </div>
+      )}
+
+      {/* Smart Top-up Action */}
+      {showSmartTopUp && projection?.suggestion_amount && (
+        <button 
+          onClick={() => navigate('/student/topup', { state: { preset: projection.suggestion_amount } })}
+          className="w-full mb-8 glass-premium py-4 border-primary/20 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center space-x-3 hover:bg-primary/10 transition-all border animate-pulse group"
+        >
+          <Zap size={14} fill="currentColor" className="group-hover:scale-125 transition-transform" />
+          <span>Smart Inject: ₹{projection.suggestion_amount}</span>
+        </button>
+      )}
 
       {/* Quick Top-up Logic Inject - Best Version Enhancement */}
       <div className="flex space-x-3 mb-8">
